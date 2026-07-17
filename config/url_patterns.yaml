@@ -1,0 +1,55 @@
+# Conventional URL path patterns tried by PatternGuessProvider, per source-
+# sequence role (spec §7), before falling back to a human-curated
+# ManualUrlProvider manifest. Spec §20 Phase 3a.
+#
+# These are best-effort guesses only — PatternGuessProvider treats a
+# candidate as "found" only after a real fetch returns 200 AND the page's
+# title/meta description appears to name the expected company (see
+# providers/pattern_guess_provider.py:_matches_company). A 200 response
+# alone is not enough — that's exactly what let a GoZen-named-but-wrong-
+# company page slip through during this session's manual validation.
+#
+# `job_descriptions` and `ai_product_pages` have no reliable single-guess
+# pattern (individual job postings and product names are companyspecific,
+# not conventional), so they're intentionally left thin/empty — a role
+# with no patterns configured always falls straight through to the manual
+# fallback manifest.
+role_path_patterns:
+  homepage:
+    - "/"
+  ai_product_pages:
+    - "/product"
+    - "/platform"
+  changelog:
+    - "/changelog"
+    - "/release-notes"
+    - "/whats-new"
+  careers_page:
+    - "/careers"
+    - "/jobs"
+  job_descriptions: []
+  engineering_blog:
+    - "/blog/engineering"
+    - "/engineering"
+    - "/blog"
+  trust_security_page:
+    - "/security"
+    - "/trust"
+    - "/trust-center"
+  press_releases:
+    - "/press"
+    - "/newsroom"
+    - "/news"
+  github: []  # handled specially — see github_org_slug_variants below
+
+# GitHub org-slug guessing (role "github" is special-cased, not a path off
+# the company's own domain): given the expected company name's first
+# alphanumeric label (e.g. "hasura" from "Hasura" or from domain
+# "hasura.io"), try https://github.com/<slug> for each variant below, in
+# order, stopping at the first one that both returns 200 and whose page
+# text plausibly names the company.
+github_org_slug_variants:
+  - "{label}"
+  - "{label}hq"
+  - "{label}-io"
+  - "{label}inc"

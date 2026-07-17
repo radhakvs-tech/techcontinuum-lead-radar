@@ -10,6 +10,7 @@ from collections import Counter
 from pathlib import Path
 
 import typer
+import yaml
 from rich.console import Console
 from rich.table import Table
 from sqlmodel import select
@@ -25,6 +26,10 @@ from lead_radar.models.scoring import ScoreContribution, ScoreRun
 from lead_radar.providers import CsvProvider, MockProvider, VibeProvider
 from lead_radar.providers.base import CompanyDataProvider
 from lead_radar.providers.credit_control import check_budget
+from lead_radar.providers.manual_url_provider import ManualUrlManifest, ManualUrlProvider
+from lead_radar.providers.mock_web_provider import MockWebProvider, MockWebProviderFixtures
+from lead_radar.providers.pattern_guess_provider import PatternGuessProvider
+from lead_radar.providers.web_research_base import WebResearchProvider
 from lead_radar.reporting import (
     RunSummary,
     build_qualified_account_row,
@@ -33,11 +38,13 @@ from lead_radar.reporting import (
     write_review_queue_csv,
     write_run_summary,
 )
+from lead_radar.research import run_research
 from lead_radar.review.workflow import apply_review_decision
 from lead_radar.scoring.engine import is_martech_account, score_account
 from lead_radar.scoring.models import ScoreBreakdown, ScoredSignal
 from lead_radar.scoring.offers import select_offer
 from lead_radar.scoring.persistence import persist_score_run
+from lead_radar.settings import get_providers_config
 
 app = typer.Typer(help="TechContinuum Lead Radar — evidence-driven B2B lead discovery and ranking.")
 review_app = typer.Typer(help="Human-review workflow commands.")
@@ -69,6 +76,48 @@ def _parse_countries(countries: str | None) -> list[str] | None:
     if not countries:
         return None
     return [c.strip().upper() for c in countries.split(",") if c.strip()]
+
+
+def _load_manual_url_manifest(path: Path) -> ManualUrlManifest:
+    """Loads a human-curated {domain: {role: [url, ...]}} YAML file. A
+    missing file is treated as an empty manifest — ManualUrlProvider then
+    has nothing to search or fetch for any account, rather than erroring,
+    so `research --provider manual_url` is always safe to run before a
+    manifest has been populated (spec §7: no uncontrolled crawling, and
+    this session's own rule: no real fetch without an explicit human-curated
+    URL)."""
+    if not path.exists():
+        return {}
+    with path.open("r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+    return dict(raw)
+
+
+def _get_web_provider(
+    provider_name: str, manifest_path: Path | None, account: Account | None = None
+) -> WebResearchProvider:
+    if provider_name == "manual_url":
+        config = get_providers_config()
+        path = manifest_path or Path(config["web_research"]["manual_url_manifest_path"])
+        manifest = _load_manual_url_manifest(path)
+        return ManualUrlProvider(manifest)
+    if provider_name == "mock":
+        return MockWebProvider(MockWebProviderFixtures())
+    if provider_name == "pattern_guess":
+        # Opt-in only (never the default — see research_command's --provider
+        # default) because, unlike manual_url with an empty manifest,
+        # pattern_guess actively fetches real conventional-path guesses
+        # against the account's real domain the moment it's asked to
+        # research anything, with no manifest gate required first.
+        config = get_providers_config()
+        path = manifest_path or Path(config["web_research"]["manual_url_manifest_path"])
+        fallback_manifest = _load_manual_url_manifest(path)
+        company_names = {account.domain: account.company_name} if account is not None else {}
+        return PatternGuessProvider(company_names, fallback_manifest=fallback_manifest)
+    raise typer.BadParameter(
+        f"Unsupported web research provider '{provider_name}'. "
+        "Supports: manual_url, mock, pattern_guess."
+    )
 
 
 @app.command("init-db")
@@ -188,6 +237,81 @@ def score_command(account_id: int = typer.Option(..., "--account-id")) -> None:
             f"[bold]Classification:[/bold] {run.classification.value}  "
             f"[bold]Meets HIGH_INTENT evidence bar:[/bold] {run.meets_high_intent_evidence_bar}"
         )
+
+
+@app.command("research")
+def research_command(
+    account_id: int = typer.Option(..., "--account-id"),
+    provider: str = typer.Option(
+        "manual_url",
+        "--provider",
+        help=(
+            "manual_url (default, safe — only fetches URLs you've manually curated) | "
+            "mock (offline, for testing) | "
+            "pattern_guess (opt-in only — makes real HTTP requests against guessed "
+            "conventional paths on the account's domain the moment it runs; must be "
+            "requested explicitly every time, never a default)"
+        ),
+    ),
+    manifest_path: Path | None = typer.Option(
+        None,
+        "--manifest-path",
+        help="ManualUrlProvider manifest YAML — also used as pattern_guess's manual "
+        "fallback for roles it can't guess (defaults to config/providers.yaml "
+        "web_research.manual_url_manifest_path)",
+    ),
+) -> None:
+    """Public web research (spec §7) for an account that already passed the
+    preliminary score threshold: fetches the source-sequence pages and
+    structurally extracts Evidence. No LLM call, no contact discovery — see
+    docs/spec.md §20 Phase 3a/3b split.
+
+    --provider defaults to manual_url, which only touches the network for
+    URLs a human already curated in the manifest — safe to run with no
+    setup. --provider pattern_guess instead actively guesses and fetches
+    real conventional-path URLs (e.g. /careers, /changelog) on the
+    account's real domain; it is never the default and must be passed
+    explicitly on every invocation that wants it."""
+    with get_session() as session:
+        account = session.get(Account, account_id)
+        if account is None:
+            raise typer.BadParameter(f"No account with id {account_id}")
+
+        web_provider = _get_web_provider(provider, manifest_path, account)
+        result = run_research(session, account, web_provider)
+
+        if result.status == "skipped":
+            console.print(
+                f"[yellow]Research skipped for account {account_id}:[/yellow] "
+                f"{result.skipped_reason}"
+            )
+            return
+
+        table = Table(
+            title=(
+                f"Research: {account.company_name} ({account.domain}) — "
+                f"{result.pages_fetched} page(s) fetched, {len(result.evidence)} evidence row(s)"
+            )
+        )
+        table.add_column("Source type")
+        table.add_column("Signal")
+        table.add_column("Classification")
+        table.add_column("Confidence")
+        table.add_column("URL")
+        for evidence in result.evidence:
+            table.add_row(
+                evidence.source_type.value,
+                evidence.signal_type,
+                evidence.classification.value,
+                f"{evidence.confidence:.2f}",
+                evidence.source_url,
+            )
+        console.print(table)
+
+        if result.pages_skipped:
+            console.print(f"[yellow]{len(result.pages_skipped)} page(s) skipped:[/yellow]")
+            for reason in result.pages_skipped:
+                console.print(f"  - {reason}")
 
 
 @app.command("run")

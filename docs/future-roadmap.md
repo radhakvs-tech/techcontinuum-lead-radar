@@ -23,7 +23,14 @@ lint`, `make typecheck`, `make test`, `make demo`). Phase 2 has not started
   `MockWebProvider` stubs: per-domain fetch cache, robots/rate-limit
   respect, page-size and page-count limits.
 - Free-text evidence extraction feeding the same `Evidence`/`Signal` tables
-  Phase 1 already populates from structured provider events.
+  Phase 1 already populates from structured provider events. **Before
+  building the Evidence→Signal conversion itself, read
+  `docs/evidence-policy.md` "Evidence → Signal conversion: a binding
+  constraint"** — `GENERAL_INDUSTRY_CONSIDERATION` and
+  `UNKNOWN_REQUIRING_VALIDATION` tier evidence must be excluded from that
+  conversion by classification tier, not merely down-weighted by
+  confidence, or a hedged/generic-marketing match can silently satisfy the
+  `HIGH_INTENT` evidence bar.
 - LLM-assisted classification (`llm/` package, Anthropic API) — evidence
   summarisation, pain-track detection, validation-question drafting. The
   LLM never computes the final score (spec §8, §23) and the app must keep

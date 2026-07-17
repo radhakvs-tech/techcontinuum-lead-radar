@@ -100,3 +100,13 @@ def get_exclusions_config() -> YamlConfig:
 @lru_cache
 def get_providers_config() -> YamlConfig:
     return _load_yaml("providers.yaml")
+
+
+@lru_cache
+def get_evidence_keywords_config() -> YamlConfig:
+    return _load_yaml("evidence_keywords.yaml")
+
+
+@lru_cache
+def get_url_patterns_config() -> YamlConfig:
+    return _load_yaml("url_patterns.yaml")

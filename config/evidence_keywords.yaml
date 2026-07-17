@@ -1,0 +1,175 @@
+# Structural, keyword-based evidence taxonomy for Phase 3a web research.
+# Spec docs/spec.md §5, §7, §20 (Phase 3a: "structural evidence extraction —
+# no LLM").
+#
+# This performs NO judgment-based classification — it is case-insensitive
+# phrase matching against page text, plus a small set of structural rules
+# (which source_type a match came from, whether hedging language is
+# present). Genuine judgment-based classification ("does this text really
+# describe an agent that takes actions, or is it just copy?") is Phase 3b's
+# LLM job. Treat every match here as a candidate for human/LLM review, not
+# a final verdict — that's exactly why UNKNOWN_REQUIRING_VALIDATION and
+# REASONABLE_INFERENCE exist as separate tiers from OBSERVED_FACT.
+
+# signal_type -> case-insensitive trigger phrases. Keys mirror
+# config/signal_taxonomy.yaml signal keys so structurally-detected evidence
+# lines up with the vocabulary the scoring engine understands. This is a
+# deliberately partial starting set covering the demo/test scenarios, not
+# an exhaustive taxonomy — see README "How to add new signals" for how to
+# extend it.
+signal_keywords:
+  customer_facing_ai_launch:
+    - "introducing our ai"
+    - "new ai feature"
+    - "ai-powered assistant is now available"
+    - "launching our ai"
+    - "now live: ai"
+
+  ai_beta_to_ga:
+    - "now generally available"
+    - "beta to general availability"
+    - "moving from beta to ga"
+    - "graduates from beta"
+
+  ai_assistant_or_copilot_launch:
+    - "introducing copilot"
+    - "meet our ai assistant"
+    - "ai copilot"
+    - "your new ai assistant"
+
+  action_taking_agent:
+    - "agent that can"
+    - "autonomous agent"
+    - "acts on your behalf"
+    - "takes action without"
+    - "without human sign-off"
+    - "agent automatically"
+
+  ai_ml_engineering_hiring:
+    - "machine learning engineer"
+    - "ai engineer"
+    - "ml engineer"
+    - "applied scientist"
+
+  mlops_llmops_hiring:
+    - "mlops engineer"
+    - "llmops"
+    - "ml platform engineer"
+    - "ai platform engineer"
+
+  evaluation_guardrail_observability_hiring:
+    - "evaluation engineer"
+    - "ai observability"
+    - "guardrail engineer"
+    - "model evaluation"
+
+  ai_security_governance_activity:
+    - "ai governance"
+    - "responsible ai"
+    - "model risk management"
+    - "ai safety review"
+
+  new_ai_leadership:
+    - "head of ai"
+    - "chief ai officer"
+    - "vp of ai"
+    - "vice president of artificial intelligence"
+
+  model_provider_partnership:
+    - "partnership with openai"
+    - "partnership with anthropic"
+    - "powered by claude"
+    - "powered by gpt"
+    - "built on azure openai"
+
+  explicit_cloud_cost_signal:
+    - "reduce our cloud costs"
+    - "infrastructure cost reduction"
+    - "cloud spend"
+    - "cut compute costs"
+
+  finops_hiring:
+    - "finops engineer"
+    - "finops analyst"
+    - "cloud cost engineer"
+
+  platform_or_sre_hiring:
+    - "site reliability engineer"
+    - "platform engineer"
+    - "infrastructure engineer"
+
+  explicit_modernisation_program:
+    - "modernisation program"
+    - "modernization initiative"
+    - "legacy platform migration"
+    - "monolith to microservices"
+
+  cloud_migration:
+    - "migrating to aws"
+    - "migrating to the cloud"
+    - "cloud migration"
+    - "data center exit"
+
+  monolith_decomposition:
+    - "breaking up the monolith"
+    - "decomposing our monolith"
+
+  funding_round:
+    - "series a"
+    - "series b"
+    - "series c"
+    - "raised $"
+    - "funding round"
+
+  martech_agent_added_to_workflow:
+    - "agent inside your campaign"
+    - "ai agent for campaigns"
+    - "autonomous campaign agent"
+
+  press_partnership_announcement:
+    - "today announced a partnership"
+    - "strategic partnership with"
+
+# Phrases that NEVER count as evidence of a specific signal on their own —
+# spec §5: "the conclusion is not based only on marketing phrases such as
+# 'AI-powered'". A match against this list, when no more specific signal
+# above also matched the same text block, is recorded as
+# generic_ai_marketing_only / GENERAL_INDUSTRY_CONSIDERATION — never
+# OBSERVED_FACT or REASONABLE_INFERENCE.
+generic_marketing_phrases:
+  - "ai-powered"
+  - "ai-driven"
+  - "cutting-edge ai"
+  - "revolutioniz"
+  - "harness the power of ai"
+  - "next-generation ai"
+  - "state-of-the-art ai"
+  - "supercharge"
+
+# Hedging/aspirational language. When present in a matched text block, the
+# evidence is downgraded to UNKNOWN_REQUIRING_VALIDATION regardless of
+# source_type or signal_type — the page is describing a possibility, not a
+# commitment, and structural keyword matching cannot tell how firm that
+# possibility is.
+hedge_phrases:
+  - "we are exploring"
+  - "considering whether"
+  - "may introduce"
+  - "plan to explore"
+  - "evaluating whether"
+  - "in the future we may"
+  - "no immediate plans"
+
+# Source types where a keyword match is treated as a direct, first-party
+# operational statement (OBSERVED_FACT) rather than marketing/blog copy
+# (REASONABLE_INFERENCE) — spec §5 preferred-sources list. A careers page
+# listing a role, a changelog entry, or a press release IS the primary
+# record of that fact; a homepage paragraph describing the same thing
+# secondhand is not.
+observed_fact_source_types:
+  - changelog
+  - careers_page
+  - job_description
+  - press_release
+  - trust_centre
+  - github

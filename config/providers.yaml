@@ -74,11 +74,31 @@ vibe_cost_heuristic:
     # off caller-supplied business_ids, uncapped.
 
 web_research:
-  active_provider: manual_url  # manual_url | mock (Phase 3)
+  active_provider: manual_url  # manual_url | mock (Phase 3a)
   max_pages_per_domain: 8
   page_fetch_timeout_seconds: 15
   max_content_size_bytes: 2_000_000
   respect_robots_txt: true
+  # Minimum spacing between two fetches to the same domain, so a research
+  # run over several source-sequence pages never hammers one company's
+  # site (spec §7 "rate limits").
+  min_seconds_between_requests_per_domain: 2.0
+  # Only accounts whose latest ScoreRun.total_score is at or above this are
+  # researched (spec §7: "search only accounts that have passed the
+  # preliminary score threshold"). Deliberately a separate, independently
+  # configurable number from scoring.yaml classification.watchlist rather
+  # than importing it directly — the two thresholds answer different
+  # questions (worth reporting on vs. worth spending fetch budget on) and
+  # may need to diverge later.
+  preliminary_score_threshold: 45
+  # Identifies this agent to robots.txt and to any site operator inspecting
+  # their access logs. Real contact address so a site owner who wants this
+  # bot blocked can reach us instead of guessing.
+  user_agent: "TechContinuumLeadRadarBot/0.1 (+mailto:radhakvs@gmail.com; evidence research for B2B lead qualification; respects robots.txt)"
+  # ManualUrlProvider's source of per-domain, per-role URLs. See
+  # docs/evidence-policy.md for the file format. Starts unpopulated —
+  # ManualUrlProvider fetches nothing until URLs are explicitly added here.
+  manual_url_manifest_path: "data/imports/manual_research_urls.yaml"
 
 llm:
   provider: anthropic
