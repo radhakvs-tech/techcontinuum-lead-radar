@@ -38,6 +38,28 @@ lead-radar review approve 123 --reason "Customer-facing AI launch plus simultane
 lead-radar review reject 123 --reason "Wrong ICP: pure staffing agency"
 ```
 
+## Re-ingestion never overwrites a human decision
+
+`discovery/ingest.py:ingest_company_record` upserts by domain and, until
+this was fixed, unconditionally reset `account.status` from hard gates on
+every re-ingest — silently resetting e.g. `APPROVED_FOR_CONTACT_DISCOVERY`
+back to `PRELIMINARY_QUALIFIED` the next time the same domain was
+re-ingested (found via a real re-ingest of an approved account during
+VibeProvider validation).
+
+Now: whether a human has decided on an account is determined by whether
+any `HumanReview` row exists for it — not by its current status value,
+since `AccountStatus.REJECTED` is written both by hard-gate
+auto-rejection and by a human's `review reject`, and those are otherwise
+indistinguishable. If a `HumanReview` row exists, re-ingestion still
+refreshes factual fields (name, country, employee count, industry, etc.)
+but leaves `account.status` untouched. If the fresh data would now fail
+hard gates, that's surfaced as a `hard_gate_mismatch:`-prefixed
+`data_quality_flag` instead of silently re-rejecting or un-approving the
+account — and `reporting/csv_export.py:write_review_queue_csv` routes any
+account carrying that flag back into `review_queue.csv`, even though its
+status isn't `PENDING_HUMAN_REVIEW`, so a reviewer actually sees it.
+
 ## What Phase 1 does *not* do yet
 
 `APPROVED_FOR_CONTACT_DISCOVERY` is a real status the CLI can set, but no

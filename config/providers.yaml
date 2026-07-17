@@ -17,6 +17,62 @@ credit_budget:
 # Populate via VIBE_ACCOUNT_EMAILS in .env, not here (avoid committing PII).
 vibe_free_tier_accounts: []
 
+# Local heuristic cost estimation for the future VibeProvider (spec §6).
+# The real `vpai` CLI exposes NO account-balance, credit-usage, or
+# cost-estimate API of any kind — confirmed by inspecting `vpai whoami`
+# (auth status fields only), every subcommand's --help / --all-parameters
+# schema output, AND one real live `fetch-entities --number-of-results 5`
+# response (no credit/balance/usage/billing field anywhere in any of them).
+# Full investigation: docs/vibe-credit-strategy.md "What vpai actually
+# reports".
+vibe_cost_heuristic:
+  # Real PUBLISHED Explorium pricing figures (source: explorium.ai/pricing,
+  # explorium.ai blog, third-party comparison reviews, as supplied
+  # 2026-07-17) — NOT vendor-API-confirmed, since no such API exists, but
+  # real published numbers rather than a guess. Re-validate against an
+  # actual invoice/credit ledger once one is available.
+  credit_rates:
+    # Published as "Generate/search/list/event actions: 1 credit". Read as
+    # a FLAT per-call rate, not per-row — our interpretation of an
+    # ambiguous published phrase (it could instead mean per-row); flagged
+    # in every estimate's notes. Covers: fetch-entities, match-business,
+    # match-prospects, fetch-entities-statistics, fetch-businesses-events,
+    # fetch-prospects-events, autocomplete.
+    search_list_event_credits_per_call: 1.0
+    # Published as "Enrichment: 1-5 credits depending on data type", with
+    # no published per-type breakdown. We use the conservative (upper
+    # bound) figure per business_id/prospect_id x enrichment-type pair —
+    # better to overestimate spend than under-budget it. Covers
+    # enrich-business, and enrich-prospects' "profiles" enrichment.
+    enrichment_credits_per_record_conservative: 5.0
+    enrichment_credits_per_record_published_range: [1.0, 5.0]
+    # enrich-prospects "contacts" enrichment, published rates:
+    enrich_prospects_full_contact_credits: 8.0 # prospect + email + phone
+    enrich_prospects_phone_only_credits: 10.0
+    # NOT a published figure — this is OUR extrapolation only. The only
+    # published detail is "email lookup cheaper [than phone], same shared
+    # pool," with no exact number, so we reuse the conservative enrichment
+    # upper bound as a stand-in (still cheaper than the 8/10 figures above).
+    enrich_prospects_email_only_credits_estimate: 5.0
+  # The one real, vendor-provided bounded-cost dry run: `fetch-entities`
+  # --number-of-results defaults to 50 rows but has a documented
+  # "Sample gate: 5" (`vpai fetch-entities --help`). Always run the 5-row
+  # sample before a full-size fetch — it is the actual cost control the
+  # vendor gives us, not this heuristic.
+  sample_gate_rows: 5
+  # vpai tool name -> per-call row/id-list cap, taken verbatim from that
+  # tool's `vpai <tool> --help` / `--all-parameters` text. Informational for
+  # the flat-per-call operations (row count doesn't change their credit
+  # cost under our interpretation above); load-bearing for enrich-prospects,
+  # whose cost scales with prospect_ids count.
+  known_row_limits:
+    fetch-entities: 50 # "--number-of-results ... (default: 50)"
+    match-business: 50 # "Limit: at most 50 businesses per call."
+    match-prospects: 40 # "Limit: at most 40 prospects per call."
+    enrich-prospects: 50 # "Practical batch limit: 50 prospect IDs per call"
+    # No documented per-call cap found for enrich-business — sized directly
+    # off caller-supplied business_ids, uncapped.
+
 web_research:
   active_provider: manual_url  # manual_url | mock (Phase 3)
   max_pages_per_domain: 8

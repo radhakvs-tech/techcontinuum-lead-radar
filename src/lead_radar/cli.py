@@ -22,7 +22,7 @@ from lead_radar.models.account import Account
 from lead_radar.models.enums import AccountStatus, ReviewerLabel
 from lead_radar.models.evidence import Evidence, Signal
 from lead_radar.models.scoring import ScoreContribution, ScoreRun
-from lead_radar.providers import CsvProvider, MockProvider
+from lead_radar.providers import CsvProvider, MockProvider, VibeProvider
 from lead_radar.providers.base import CompanyDataProvider
 from lead_radar.providers.credit_control import check_budget
 from lead_radar.reporting import (
@@ -55,8 +55,13 @@ def _get_provider(provider_name: str, csv_path: Path | None) -> CompanyDataProvi
         return CsvProvider(csv_path)
     if provider_name == "mock":
         return MockProvider()
+    if provider_name == "vibe":
+        # Real vpai calls; the default credit_budget (maximum_per_run: 0 in
+        # config/providers.yaml) refuses any spend until explicitly raised.
+        # See docs/vibe-credit-strategy.md before pointing this at a live run.
+        return VibeProvider()
     raise typer.BadParameter(
-        f"Unsupported provider '{provider_name}'. Phase 1 supports: mock, csv."
+        f"Unsupported provider '{provider_name}'. Supports: mock, csv, vibe."
     )
 
 
@@ -224,11 +229,7 @@ def run_command(
             for r in result.accounts_scored
         ]
         write_qualified_accounts_csv(rows, output_dir / "qualified_accounts.csv")
-
-        review_rows = [
-            r for r in rows if r.review_status == AccountStatus.PENDING_HUMAN_REVIEW.value
-        ]
-        write_review_queue_csv(review_rows, output_dir / "review_queue.csv")
+        write_review_queue_csv(rows, output_dir / "review_queue.csv")
 
         write_evidence_jsonl(result.evidence_rows, output_dir / "evidence.jsonl")
 

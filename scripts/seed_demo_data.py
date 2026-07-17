@@ -57,9 +57,7 @@ def main() -> None:
             for r in result.accounts_scored
         ]
         write_qualified_accounts_csv(rows, EXPORTS_DIR / "qualified_accounts.csv")
-
-        review_rows = [r for r in rows if r.review_status == "PENDING_HUMAN_REVIEW"]
-        write_review_queue_csv(review_rows, EXPORTS_DIR / "review_queue.csv")
+        write_review_queue_csv(rows, EXPORTS_DIR / "review_queue.csv")
 
         write_evidence_jsonl(result.evidence_rows, EXPORTS_DIR / "evidence.jsonl")
 

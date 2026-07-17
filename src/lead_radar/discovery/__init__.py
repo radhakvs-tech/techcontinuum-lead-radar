@@ -1,5 +1,9 @@
 from lead_radar.discovery.hard_gates import HardGateResult, evaluate_hard_gates
-from lead_radar.discovery.ingest import canonicalize_domain, ingest_company_record
+from lead_radar.discovery.ingest import (
+    HARD_GATE_MISMATCH_FLAG_PREFIX,
+    canonicalize_domain,
+    ingest_company_record,
+)
 from lead_radar.discovery.pipeline import (
     PipelineRunResult,
     ScoredAccountResult,
@@ -7,6 +11,7 @@ from lead_radar.discovery.pipeline import (
 )
 
 __all__ = [
+    "HARD_GATE_MISMATCH_FLAG_PREFIX",
     "HardGateResult",
     "PipelineRunResult",
     "ScoredAccountResult",

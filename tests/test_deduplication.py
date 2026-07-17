@@ -4,9 +4,15 @@ from __future__ import annotations
 
 from sqlmodel import Session, select
 
-from lead_radar.discovery.ingest import canonicalize_domain, ingest_company_record
+from lead_radar.discovery.ingest import (
+    HARD_GATE_MISMATCH_FLAG_PREFIX,
+    canonicalize_domain,
+    ingest_company_record,
+)
 from lead_radar.models.account import Account
+from lead_radar.models.enums import AccountStatus
 from lead_radar.providers.base import ProviderCompanyRecord
+from lead_radar.review.workflow import apply_review_decision
 
 
 def test_canonicalize_domain_normalises_variants() -> None:
@@ -66,3 +72,95 @@ def test_alias_domain_variants_canonicalize_to_the_same_account(session: Session
 
     accounts = list(session.exec(select(Account).where(Account.domain == "example-co.example")))
     assert len(accounts) == 1
+
+
+def _base_record() -> ProviderCompanyRecord:
+    return ProviderCompanyRecord(
+        company_name="Example Co",
+        domain="example-co.example",
+        headquarters_country="US",
+        employee_count=100,
+        reported_revenue_usd=50_000_000,
+        company_type="b2b_saas",
+    )
+
+
+def test_reingesting_without_human_review_keeps_auto_status_behaviour(session: Session) -> None:
+    """Baseline: this fix only changes behaviour once a human has actually
+    decided on the account — no HumanReview row means status keeps being
+    auto-set from hard gates, same as before."""
+    ingest_company_record(session, _base_record())
+    updated = ingest_company_record(session, _base_record())
+    assert updated.status == AccountStatus.PRELIMINARY_QUALIFIED
+
+
+def test_reingesting_approved_account_preserves_status_and_refreshes_fields(
+    session: Session,
+) -> None:
+    account = ingest_company_record(session, _base_record())
+    apply_review_decision(
+        session, account, "reviewer", AccountStatus.APPROVED_FOR_CONTACT_DISCOVERY, "good fit"
+    )
+
+    record_v2 = _base_record().model_copy(update={"employee_count": 150, "industry": "SaaS"})
+    updated = ingest_company_record(session, record_v2)
+
+    assert updated.status == AccountStatus.APPROVED_FOR_CONTACT_DISCOVERY
+    assert updated.employee_count == 150
+    assert updated.industry == "SaaS"
+
+
+def test_reingesting_human_rejected_account_preserves_status_and_refreshes_fields(
+    session: Session,
+) -> None:
+    """AccountStatus.REJECTED is written by both hard-gate auto-rejection
+    and a human's `review reject` — a HumanReview row is what distinguishes
+    them, and only the human-driven case must survive re-ingestion
+    unchanged."""
+    account = ingest_company_record(session, _base_record())
+    apply_review_decision(session, account, "reviewer", AccountStatus.REJECTED, "wrong ICP")
+
+    record_v2 = _base_record().model_copy(update={"employee_count": 150})
+    updated = ingest_company_record(session, record_v2)
+
+    assert updated.status == AccountStatus.REJECTED
+    assert updated.employee_count == 150
+
+
+def test_reingesting_approved_account_with_gate_failing_data_flags_not_overrides(
+    session: Session,
+) -> None:
+    """If fresh data would now fail hard gates for a human-approved
+    account, status must still be preserved — the mismatch is surfaced as
+    a flag instead of silently re-rejecting an approved account."""
+    account = ingest_company_record(session, _base_record())
+    apply_review_decision(
+        session, account, "reviewer", AccountStatus.APPROVED_FOR_CONTACT_DISCOVERY, "good fit"
+    )
+
+    record_v2 = _base_record().model_copy(update={"headquarters_country": "FR"})
+    updated = ingest_company_record(session, record_v2)
+
+    assert updated.status == AccountStatus.APPROVED_FOR_CONTACT_DISCOVERY
+    mismatch_flags = [
+        f for f in updated.data_quality_flags if f.startswith(HARD_GATE_MISMATCH_FLAG_PREFIX)
+    ]
+    assert len(mismatch_flags) == 1
+    assert "headquarters_country" in mismatch_flags[0]
+    assert "APPROVED_FOR_CONTACT_DISCOVERY" in mismatch_flags[0]
+
+
+def test_reingesting_approved_account_still_passing_gates_adds_no_mismatch_flag(
+    session: Session,
+) -> None:
+    account = ingest_company_record(session, _base_record())
+    apply_review_decision(
+        session, account, "reviewer", AccountStatus.APPROVED_FOR_CONTACT_DISCOVERY, "good fit"
+    )
+
+    record_v2 = _base_record().model_copy(update={"employee_count": 120})
+    updated = ingest_company_record(session, record_v2)
+
+    assert not any(
+        f.startswith(HARD_GATE_MISMATCH_FLAG_PREFIX) for f in updated.data_quality_flags
+    )

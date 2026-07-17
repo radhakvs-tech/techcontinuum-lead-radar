@@ -4,13 +4,18 @@ Evidence-driven B2B lead discovery and ranking for TechContinuum, a two-person
 senior advisory firm helping established SaaS companies move AI-enabled
 products from experimentation to dependable production.
 
-> **Status: Phase 1 (of 5)** — repository scaffold, configuration, database,
-> core models, mock/CSV providers, ICP hard gates, deterministic scoring,
-> tests, and CLI. See `docs/spec.md` §20 for the full phase plan and
-> `claude.md` for phase-discipline rules. Real Vibe Prospecting integration,
-> public web research, LLM-assisted classification, dossier generation, and
-> contact/email enrichment are **not yet implemented** — they arrive in
-> Phases 2–4.
+> **Status: Phase 2 (of 5)** — Phase 1 (scaffold, config, database, core
+> models, mock/CSV providers, hard gates, deterministic scoring, tests, CLI)
+> plus Phase 2's `VibeProvider` (real `vpai` CLI integration), cost
+> estimation, multi-account credit-expiry priority logic, and retry/caching
+> are done. See `docs/spec.md` §20 for the full phase plan and `claude.md`
+> for phase-discipline rules. `VibeProvider`'s output parsing is only
+> live-verified for `search_companies`/`company_statistics` — see
+> `providers/vibe_provider.py`'s module docstring and
+> `docs/vibe-credit-strategy.md` before trusting its other methods in
+> production. Public web research, LLM-assisted classification, dossier
+> generation, and contact/email enrichment approval workflows are **not yet
+> implemented** — they arrive in Phases 3–4.
 
 ## Business purpose
 
@@ -66,11 +71,19 @@ later phases.
 
 ## Vibe Prospecting integration
 
-Not yet implemented. `providers/base.py` defines the `CompanyDataProvider`
-protocol described in spec §6; `MockProvider` and `CsvProvider` implement it
-today. A `VibeProvider` backed by the `vpai` CLI arrives in Phase 2, after
-inspecting `vpai`'s live tool schemas (parameters must not be assumed ahead
-of time).
+`providers/base.py` defines the `CompanyDataProvider` protocol described in
+spec §6; `MockProvider`, `CsvProvider`, and now `VibeProvider` all implement
+it. `VibeProvider` (`providers/vibe_provider.py`) shells out to the real
+`vpai` CLI (via `providers/vpai_runner.py`, with retry + per-run caching)
+after inspecting `vpai`'s live tool schemas, per spec §6. Every real call is
+gated by `providers/vibe_cost_heuristic.py` (published Explorium credit
+rates — not vendor-API-confirmed, since `vpai` has no cost API) and
+`providers/credit_control.py` (`credit_budget.maximum_per_run` defaults to
+0, so nothing spends until a human explicitly raises it). Multi-account
+priority (`providers/vibe_accounts.py`) ranks by soonest credit expiry, not
+balance — see `docs/vibe-credit-strategy.md` for the full model, including
+which of `VibeProvider`'s response-parsing paths are live-verified versus
+inferred from documentation only.
 
 ## CSV import format
 
