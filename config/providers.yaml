@@ -1,0 +1,29 @@
+# Data-provider configuration. Spec docs/spec.md §6.
+
+active_provider: mock  # mock | csv | vibe (vibe arrives in Phase 2)
+
+# Vibe Prospecting credit controls. Defaults are deliberately conservative:
+# the budget starts at zero and must be raised explicitly before any
+# credit-consuming operation is allowed to proceed.
+credit_budget:
+  maximum_per_run: 0
+  maximum_per_week: 0
+  require_cost_estimate: true
+  retrieve_contacts_only_after_approval: true
+  retrieve_email_only_after_approval: true
+  retrieve_phone_numbers: false
+
+# Free-tier accounts to round-robin before any paid credit is spent.
+# Populate via VIBE_ACCOUNT_EMAILS in .env, not here (avoid committing PII).
+vibe_free_tier_accounts: []
+
+web_research:
+  active_provider: manual_url  # manual_url | mock (Phase 3)
+  max_pages_per_domain: 8
+  page_fetch_timeout_seconds: 15
+  max_content_size_bytes: 2_000_000
+  respect_robots_txt: true
+
+llm:
+  provider: anthropic
+  enabled: false  # Phase 3+. Application must work without an LLM.

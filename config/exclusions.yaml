@@ -1,0 +1,24 @@
+# Hard-exclusion keyword hints used by discovery/hard_gates.py in addition
+# to icp.yaml's excluded_company_types. Matching is a lightweight substring
+# check against industry/company_type/technologies text — this is a coarse
+# net, not a classifier; ambiguous cases should still pass through to
+# scoring rather than being silently dropped.
+
+industry_keyword_excludes:
+  - staffing
+  - recruitment
+  - training academy
+  - bootcamp
+  - marketing agency
+  - creative agency
+  - outsourced development
+  - dev shop
+  - body shop
+
+# Companies whose only "AI" offering is a thin wrapper around a single
+# third-party model API with no proprietary workflow, data or integration
+# are penalised heavily in scoring rather than hard-excluded, since this
+# can be hard to determine before evidence collection (spec §3).
+thin_ai_wrapper_keywords:
+  - "ChatGPT wrapper"
+  - "prompt wrapper"

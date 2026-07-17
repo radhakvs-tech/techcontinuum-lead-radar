@@ -1,0 +1,58 @@
+[project]
+name = "lead-radar"
+version = "0.1.0"
+description = "TechContinuum Lead Radar — evidence-driven B2B lead discovery and scoring MVP"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+license = { text = "Proprietary" }
+dependencies = [
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "sqlmodel>=0.0.21",
+    "typer>=0.12",
+    "rich>=13.7",
+    "jinja2>=3.1",
+    "httpx>=0.27",
+    "tenacity>=8.3",
+    "pyyaml>=6.0",
+]
+
+[project.scripts]
+lead-radar = "lead_radar.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "types-pyyaml>=6.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/lead_radar"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# B008: Typer's CLI option/argument definitions require calling
+# typer.Option()/typer.Argument() as the parameter default — that's the
+# framework's documented idiom, not a mutable-default bug.
+ignore = ["B008"]
+
+[tool.mypy]
+python_version = "3.12"
+packages = ["lead_radar"]
+mypy_path = "src"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

@@ -1,0 +1,126 @@
+# Canonical signal taxonomy. Spec docs/spec.md §4.
+# `pain_track` groups signals into the four independently-scored pain
+# tracks; `key` must match an entry in config/scoring.yaml `signals:`
+# wherever the signal contributes to the score.
+
+pain_tracks:
+  A_ai_production_readiness:
+    label: "AI production readiness"
+    signals:
+      - customer_facing_ai_launch
+      - ai_assistant_or_copilot_launch
+      - ai_beta_to_ga
+      - action_taking_agent
+      - ai_ml_engineering_hiring
+      - mlops_llmops_hiring
+      - evaluation_guardrail_observability_hiring
+      - ai_security_governance_activity
+      - new_ai_leadership
+      - model_provider_partnership
+      - ai_across_multiple_products
+      - autonomous_workflow_documentation
+      - ai_opened_to_enterprise_customers
+      - ai_tied_to_tenant_sensitive_data
+      - multiple_ai_roles
+      - generic_ai_marketing_only
+
+  B_cloud_and_ai_economics:
+    label: "Cloud and AI economics"
+    signals:
+      - explicit_cloud_cost_signal
+      - finops_hiring
+      - infrastructure_efficiency_in_job_descriptions
+      - rapid_growth
+      - kubernetes_or_multi_region_architecture
+      - high_volume_data_processing
+      - real_time_inference
+      - av_or_document_processing
+      - usage_dependent_ai_costs
+      - gpu_token_inference_cost_reference
+      - compute_driven_pricing_change
+      - regional_expansion
+      - cloud_provider_migration
+      - platform_or_sre_hiring
+      - infrastructure_cost_reduction_post
+
+  C_legacy_modernisation:
+    label: "Legacy-to-cloud or AI-native modernisation"
+    signals:
+      - cloud_migration
+      - application_modernisation
+      - monolith_decomposition
+      - replatforming_or_refactoring
+      - data_centre_exit
+      - vm_to_container_migration
+      - runtime_or_framework_modernisation
+      - manual_deployment_process
+      - shared_or_coupled_database
+      - post_acquisition_platform_consolidation
+      - on_prem_to_saas
+      - new_api_or_integration_layer
+      - data_platform_modernisation
+      - ai_ambitions_constrained_by_architecture
+      - explicit_modernisation_program
+      - simultaneous_platform_data_ai_hiring
+
+  D_martech_agentisation:
+    label: "Martech agentisation pressure"
+    signals:
+      - existing_martech_platform
+      - martech_agent_added_to_workflow
+      - recommendations_to_autonomous_actions
+      - customer_data_or_crm_access
+      - agent_acting_across_external_systems
+      - ai_campaign_optimisation
+      - ai_lead_qualification
+      - ai_customer_journey_orchestration
+      - ai_content_plus_campaign_execution
+      - seat_based_to_outcome_based_shift
+      - competitor_agent_release
+      - hyperscaler_partnership
+      - ai_roadshow_or_market_education
+      - geographic_expansion
+      - product_engineering_hiring_in_agency
+      - public_ai_operational_efficiency_emphasis
+      - ecosystem_expansion_event
+
+external_advisor_likelihood:
+  positive_signals:
+    - employee_band_50_200
+    - existing_capable_engineering_team
+    - simultaneous_ai_and_platform_hiring
+    - relevant_senior_role_vacant
+    - new_technical_leader
+    - funding_round
+    - product_deadline_commitment
+    - no_mature_internal_platform_function
+    - complex_cross_boundary_transition
+    - large_enough_to_pay_small_enough_to_engage
+    - execution_oriented_but_lacks_cross_domain_experience
+  negative_signals:
+    - large_internal_consulting_function
+    - hyperscaler_is_implementation_partner
+    - large_procurement_barriers
+    - no_internal_engineering_capacity
+    - no_evidence_of_budget_or_urgency
+    - purely_experimental_ai_usage
+    - engineering_headcount_decline
+    - ai_unrelated_to_core_product
+
+evidence_classification:
+  - OBSERVED_FACT
+  - REASONABLE_INFERENCE
+  - GENERAL_INDUSTRY_CONSIDERATION
+  - UNKNOWN_REQUIRING_VALIDATION
+
+# Signal types that count as a "direct product, engineering or business
+# commitment" for the HIGH_INTENT evidence-quality gate (spec §5).
+direct_commitment_signals:
+  - customer_facing_ai_launch
+  - ai_beta_to_ga
+  - action_taking_agent
+  - explicit_modernisation_program
+  - explicit_cloud_cost_signal
+  - martech_agent_added_to_workflow
+  - cloud_migration
+  - monolith_decomposition

@@ -1,0 +1,195 @@
+# Deterministic scoring configuration. Spec docs/spec.md §8.
+# The LLM never invents these numbers — scoring/engine.py reads this file
+# and computes the final score in plain Python.
+
+scoring_version: "1.0.0"
+
+dimensions:
+  icp_and_commercial_fit: 20
+  ai_transition_pressure: 20
+  cloud_modernisation_pain: 20
+  martech_agentisation_pressure: 10
+  external_advisor_likelihood: 15
+  evidence_quality_and_recency: 15
+
+# For non-martech companies the martech_agentisation_pressure allocation is
+# redistributed proportionally across the remaining intent dimensions
+# (ai_transition_pressure, cloud_modernisation_pain, external_advisor_likelihood)
+# rather than simply discarded.
+non_martech_reallocation_targets:
+  - ai_transition_pressure
+  - cloud_modernisation_pain
+  - external_advisor_likelihood
+
+signals:
+  customer_facing_ai_launch:
+    weight: 12
+    half_life_days: 120
+    dimension: ai_transition_pressure
+
+  ai_beta_to_ga:
+    weight: 8
+    half_life_days: 90
+    dimension: ai_transition_pressure
+
+  multiple_ai_roles:
+    weight: 8
+    half_life_days: 60
+    dimension: ai_transition_pressure
+
+  platform_or_sre_hiring:
+    weight: 7
+    half_life_days: 60
+    dimension: cloud_modernisation_pain
+
+  simultaneous_ai_and_platform_hiring:
+    weight: 10
+    half_life_days: 75
+    dimension: external_advisor_likelihood
+
+  action_taking_agent:
+    weight: 12
+    half_life_days: 120
+    dimension: ai_transition_pressure
+
+  explicit_cloud_cost_signal:
+    weight: 10
+    half_life_days: 90
+    dimension: cloud_modernisation_pain
+
+  finops_hiring:
+    weight: 8
+    half_life_days: 60
+    dimension: cloud_modernisation_pain
+
+  explicit_modernisation_program:
+    weight: 10
+    half_life_days: 120
+    dimension: cloud_modernisation_pain
+
+  funding_round:
+    weight: 5
+    half_life_days: 180
+    dimension: external_advisor_likelihood
+
+  new_technical_leader:
+    weight: 5
+    half_life_days: 120
+    dimension: external_advisor_likelihood
+
+  ecosystem_expansion_event:
+    weight: 5
+    half_life_days: 90
+    dimension: martech_agentisation_pressure
+
+  martech_agent_added_to_workflow:
+    weight: 10
+    half_life_days: 120
+    dimension: martech_agentisation_pressure
+
+  generic_ai_marketing_only:
+    weight: -10
+    half_life_days: 60
+    dimension: ai_transition_pressure
+
+  engineering_headcount_decline:
+    weight: -12
+    half_life_days: 90
+    dimension: external_advisor_likelihood
+
+  # Remaining external-advisor-likelihood signals, spec §4E. Previously these
+  # 15 existed only as labels in signal_taxonomy.yaml with no weight here, so
+  # any matching evidence/event fell into the engine's "unconfigured signal"
+  # bucket and scored zero. `employee_band_50_200` is the one exception that
+  # is not event-shaped: it is derived directly from account.employee_count
+  # by scoring/engine.py (see _employee_band_contribution), using
+  # min_employees/max_employees below instead of half_life_days — it is a
+  # structural fact re-evaluated every run, not a dated event, so no
+  # recency decay applies to it.
+  employee_band_50_200:
+    weight: 6
+    min_employees: 50
+    max_employees: 200
+    dimension: external_advisor_likelihood
+
+  existing_capable_engineering_team:
+    weight: 4
+    half_life_days: 150
+    dimension: external_advisor_likelihood
+
+  relevant_senior_role_vacant:
+    weight: 6
+    half_life_days: 90
+    dimension: external_advisor_likelihood
+
+  product_deadline_commitment:
+    weight: 6
+    half_life_days: 60
+    dimension: external_advisor_likelihood
+
+  no_mature_internal_platform_function:
+    weight: 5
+    half_life_days: 180
+    dimension: external_advisor_likelihood
+
+  complex_cross_boundary_transition:
+    weight: 7
+    half_life_days: 120
+    dimension: external_advisor_likelihood
+
+  large_enough_to_pay_small_enough_to_engage:
+    weight: 5
+    half_life_days: 180
+    dimension: external_advisor_likelihood
+
+  execution_oriented_but_lacks_cross_domain_experience:
+    weight: 6
+    half_life_days: 120
+    dimension: external_advisor_likelihood
+
+  large_internal_consulting_function:
+    weight: -10
+    half_life_days: 180
+    dimension: external_advisor_likelihood
+
+  hyperscaler_is_implementation_partner:
+    weight: -12
+    half_life_days: 150
+    dimension: external_advisor_likelihood
+
+  large_procurement_barriers:
+    weight: -8
+    half_life_days: 180
+    dimension: external_advisor_likelihood
+
+  no_internal_engineering_capacity:
+    weight: -8
+    half_life_days: 120
+    dimension: external_advisor_likelihood
+
+  no_evidence_of_budget_or_urgency:
+    weight: -6
+    half_life_days: 90
+    dimension: external_advisor_likelihood
+
+  purely_experimental_ai_usage:
+    weight: -8
+    half_life_days: 90
+    dimension: external_advisor_likelihood
+
+  ai_unrelated_to_core_product:
+    weight: -6
+    half_life_days: 120
+    dimension: external_advisor_likelihood
+
+classification:
+  high_intent: 80
+  high_priority_review: 65
+  watchlist: 45
+
+# HIGH_INTENT additionally requires these evidence-quality gates
+# (spec §5 "Evidence quality rules"), independent of the raw numeric score.
+high_intent_requirements:
+  minimum_independent_signals: 2
+  minimum_direct_commitment_signals: 1
+  maximum_days_since_most_recent_material_signal: 90

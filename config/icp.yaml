@@ -1,0 +1,48 @@
+# Target ideal-customer-profile hard gates. Spec docs/spec.md §3.
+# All of this is configurable — editing this file changes gate behaviour
+# without any code changes.
+
+geography:
+  allowed_countries:
+    - US
+    - GB
+    - DE
+    - AU
+    - SG
+
+company_size:
+  minimum_employees: 30
+  maximum_employees: 200
+
+commercial_size:
+  minimum_revenue_usd: 10_000_000
+  maximum_revenue_usd: 300_000_000
+  # Missing ARR/revenue must never auto-reject a company (spec §3, §18).
+  # It only downgrades the commercial-size confidence used in scoring.
+  reject_on_missing_revenue: false
+
+included_company_types:
+  - b2b_saas
+  - martech_saas
+  - product_analytics
+  - customer_engagement
+  - marketing_automation
+  - customer_data_platform
+  - conversational_marketing
+  - research_and_customer_intelligence
+  - enterprise_software
+  - software_enabled_product
+  - technology_led_marketing
+  - agency_technology_hybrid
+
+excluded_company_types:
+  - recruitment_staffing
+  - training_company
+  - generic_marketing_agency
+  - outsourced_development_agency
+  - thin_ai_wrapper
+  - pure_consulting_services
+
+# Companies this early-stage or with no team capable of implementing
+# recommendations are excluded regardless of other signals.
+minimum_viable_employees_for_execution: 10

@@ -1,0 +1,65 @@
+# Lead Radar Run Summary
+
+Run at: {{ summary.run_at.isoformat() }}
+Data provider: {{ summary.provider_name }}
+
+## Volumes
+
+- Accounts discovered: {{ summary.accounts_discovered }}
+- Accounts rejected by hard gates: {{ summary.accounts_rejected_by_hard_gates }}
+- Accounts researched (evidence collected): {{ summary.accounts_researched }}
+
+## Accounts by classification
+
+{% if summary.classification_counts -%}
+{% for classification, count in summary.classification_counts.items() %}
+- {{ classification }}: {{ count }}
+{% endfor -%}
+{% else %}
+- No scored accounts this run.
+{% endif %}
+
+## Vibe credit usage
+
+- Estimated credits: {{ "%.2f"|format(summary.estimated_credits_used) }}
+- Actual credits used: {{ "%.2f"|format(summary.actual_credits_used) }}
+
+## Data-provider errors
+
+{% if summary.provider_errors -%}
+{% for error in summary.provider_errors %}
+- {{ error }}
+{% endfor -%}
+{% else %}
+- None.
+{% endif %}
+
+## Top recurring signals
+
+{% if summary.top_signals -%}
+{% for signal_key, count in summary.top_signals %}
+- {{ signal_key }}: {{ count }}
+{% endfor -%}
+{% else %}
+- No signals recorded this run.
+{% endif %}
+
+## Top pain tracks
+
+{% if summary.top_pain_tracks -%}
+{% for pain_track, count in summary.top_pain_tracks %}
+- {{ pain_track }}: {{ count }}
+{% endfor -%}
+{% else %}
+- No pain tracks identified this run.
+{% endif %}
+
+## Research gaps
+
+{% if summary.research_gaps -%}
+{% for gap in summary.research_gaps %}
+- {{ gap }}
+{% endfor -%}
+{% else %}
+- None noted.
+{% endif %}

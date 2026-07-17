@@ -1,0 +1,28 @@
+# Contact title taxonomy for the (Phase 4) contact-discovery step.
+# Spec docs/spec.md §11. Defined now so role_category classification is
+# configurable rather than hard-coded when contact discovery is built.
+
+strategic_buyer:
+  role_category: strategic_buyer
+  preferred_titles:
+    - CTO
+    - Technical Co-Founder
+    - CIO
+    - VP Engineering
+    - Chief Product and Technology Officer
+
+technical_champion:
+  role_category: technical_champion
+  preferred_titles:
+    - Head of Platform
+    - Head of Infrastructure
+    - Head of SRE
+    - Head of DevOps
+    - Director of Engineering
+    - Head of AI
+    - Head of ML Platform
+    - Head of Data Platform
+
+# Hard cap enforced by review/guardrails.py regardless of how many
+# candidate titles match.
+maximum_contacts_per_account: 2
